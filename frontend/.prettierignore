@@ -1,0 +1,11 @@
+**/.cache
+**/build
+**/.vscode
+**/.vercel
+**/coverage
+**/dist
+**/node_modules
+**/.DS_Store
+**/package-lock.json
+**/pnpm-lock.yaml
+**/yarn.lock
