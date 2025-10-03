@@ -18,14 +18,13 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY src ./src
 COPY public ./public
 COPY index.html ./
-COPY adapters ./adapters
-COPY server ./server
 
 RUN pnpm run build
 
 FROM base AS production
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
+COPY --from=builder /app/adapters ./adapters
 
 COPY package.json pnpm-lock.yaml ./
 
