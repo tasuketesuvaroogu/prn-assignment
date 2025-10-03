@@ -2,7 +2,7 @@
  * This is the base config for vite.
  * When building, the adapter config is used which loads this file and extends it.
  */
-import { defineConfig, type UserConfig } from "vite";
+import { defineConfig, loadEnv, type UserConfig } from "vite";
 import { qwikVite } from "@builder.io/qwik/optimizer";
 import { qwikCity } from "@builder.io/qwik-city/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -20,7 +20,16 @@ errorOnDuplicatesPkgDeps(devDependencies, dependencies);
  * Note that Vite normally starts from `index.html` but the qwikCity plugin makes start at `src/entry.ssr.tsx` instead.
  */
 export default defineConfig(({ command, mode }): UserConfig => {
+  // Load env files for the current mode (e.g., .env, .env.production)
+  const env = loadEnv(mode, process.cwd(), "");
+  const VITE_BASE = env.VITE_BASE || env.VITE_BASE_URL || "/";
+  const VITE_API_URL = env.VITE_API_URL || env.API_URL || "http://localhost:5244/api";
+
   return {
+    base: VITE_BASE,
+    define: {
+      __API_URL__: JSON.stringify(VITE_API_URL),
+    },
     plugins: [qwikCity(), qwikVite(), tsconfigPaths({ root: "." })],
     // This tells Vite which dependencies to pre-build in dev mode.
     optimizeDeps: {
@@ -34,12 +43,16 @@ export default defineConfig(({ command, mode }): UserConfig => {
         // Don't cache the server response in dev mode
         "Cache-Control": "public, max-age=0",
       },
+      host: env.VITE_HOST || "0.0.0.0",
+      port: Number(env.VITE_PORT || env.PORT || 5244),
     },
     preview: {
       headers: {
         // Do cache the server response in preview (non-adapter production build)
         "Cache-Control": "public, max-age=600",
       },
+      host: env.VITE_HOST || "0.0.0.0",
+      port: Number(env.VITE_PREVIEW_PORT || env.PORT || 5244),
     },
   };
 });
