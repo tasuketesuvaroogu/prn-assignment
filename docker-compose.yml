@@ -14,11 +14,11 @@ services:
     container_name: prn-assignment-backend
     image: ghcr.io/tasuketesuvaroogu/prn-assignment-backend:latest
     platform: linux/arm64
+    volumes:
+      - ./appsettings.json:/app/appsettings.json:ro
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:6124
-      - Mongo__ConnectionString=${MONGO_CONNECTION_STRING}
-      - Mongo__DatabaseName=${MONGO_DATABASE_NAME:-prn-assignment}
     expose:
       - "6124"
     networks:
