@@ -18,14 +18,20 @@ export API_URL="${API_URL_ENV}"
 export VITE_API_URL="${API_URL_ENV}"
 
 # Write runtime config for client-side (served from dist/)
+echo "Writing config to /app/dist/config.js"
 cat > /app/dist/config.js <<EOF
 window.__APP_CONFIG__ = {
   API_URL: "${API_URL_ENV}"
 };
+console.log('[Entrypoint] Config loaded:', window.__APP_CONFIG__);
 EOF
 
-echo "Config file created at /app/dist/config.js"
+echo "=== Config file contents ==="
 cat /app/dist/config.js
+echo "==="
+echo "=== Checking if config.js is readable ==="
+ls -la /app/dist/config.js
+echo "==="
 
 PORT="${PORT:-5244}"
 echo "Starting Fastify server on port ${PORT}..."

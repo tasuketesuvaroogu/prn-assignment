@@ -20,6 +20,10 @@ COPY public ./public
 COPY index.html ./
 COPY adapters ./adapters
 
+# Ensure no VITE_* variables are set during build (we use runtime config instead)
+ENV VITE_API_URL=""
+ENV API_URL=""
+
 RUN pnpm run build
 
 FROM base AS production
