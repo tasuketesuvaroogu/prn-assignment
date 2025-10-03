@@ -8,6 +8,8 @@ export default component$(() => {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="manifest" href="/manifest.json" />
+        {/* Runtime config injected by entrypoint.sh */}
+        <script src="/config.js"></script>
       </head>
       <body>
         <RouterOutlet />
