@@ -17,7 +17,6 @@ COPY vite.config.* tsconfig.json ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 COPY src ./src
-COPY public ./public
 COPY index.html ./
 
 RUN pnpm run build
