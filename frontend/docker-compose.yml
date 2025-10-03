@@ -1,0 +1,15 @@
+services:
+  web:
+    container_name: medvnfe
+    image: ghcr.io/khanhveehjhj/Exe101:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - proxy
+    environment:
+      - NODE_ENV=production
+
+networks:
+  proxy:
+     name: "nginx-pm"
+     external: true
