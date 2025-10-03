@@ -14,9 +14,6 @@ importers:
       '@builder.io/qwik-city':
         specifier: ^1.5.0
         version: 1.16.1(@types/node@20.19.19)(rollup@4.52.4)(typescript@5.9.3)
-      ignore:
-        specifier: ^7.0.5
-        version: 7.0.5
     devDependencies:
       '@types/node':
         specifier: ^20.11.0
@@ -631,10 +628,6 @@ packages:
 
   hast-util-whitespace@3.0.0:
     resolution: {integrity: sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw==}
-
-  ignore@7.0.5:
-    resolution: {integrity: sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg==}
-    engines: {node: '>= 4'}
 
   imagetools-core@7.1.0:
     resolution: {integrity: sha512-8Aa4NecBBGmTkaAUjcuRYgTPKHCsBEWYmCnvKCL6/bxedehtVVFyZPdXe8DD0Nevd6UWBq85ifUaJ8498lgqNQ==}
@@ -1540,8 +1533,6 @@ snapshots:
   hast-util-whitespace@3.0.0:
     dependencies:
       '@types/hast': 3.0.4
-
-  ignore@7.0.5: {}
 
   imagetools-core@7.1.0: {}
 
