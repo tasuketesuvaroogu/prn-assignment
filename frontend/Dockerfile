@@ -23,6 +23,10 @@ COPY adapters ./adapters
 RUN pnpm run build
 
 FROM base AS production
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
 
@@ -36,4 +40,4 @@ ENV PORT=5244
 
 EXPOSE 5244
 
-CMD ["node", "server/entry.fastify.js"]
+ENTRYPOINT ["/entrypoint.sh"]

@@ -8,7 +8,8 @@ services:
       - proxy
     environment:
       - NODE_ENV=production
-      - VITE_API_URL=${API_URL:-http://localhost:6124/api}
+      # Runtime API URL (injected at container startup, not build time)
+      - API_URL=${API_URL:-http://prn-assignment-backend:6124/api}
     restart: unless-stopped
   backend:
     container_name: prn-assignment-backend

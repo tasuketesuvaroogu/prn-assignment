@@ -1,17 +1,26 @@
+// Configuration: prefer runtime-injected window.__APP_CONFIG__ (for production Docker),
+// fall back to Vite build-time env (VITE_*), then safe defaults for dev.
+// Runtime injection is done by entrypoint.sh in Docker (writes /dist/config.js).
 
-// Configuration loaded from Vite environment variables (VITE_*) with safe defaults.
-// Use a .env or .env.local file in the frontend/ directory for development.
+declare global {
+  interface Window {
+    __APP_CONFIG__?: {
+      API_URL?: string;
+    };
+  }
+}
 
 const DEFAULTS = {
-  API_URL: 'http://localhost:5000/api',
+  API_URL: 'http://localhost:6124/api',
 };
 
-// import.meta.env is provided by Vite. Vite requires env vars to be prefixed with VITE_.
-const API_URL = ((import.meta as any).env?.VITE_API_URL ?? DEFAULTS.API_URL) as string;
+// Prefer runtime config, then Vite env, then default
+const API_URL =
+  (typeof window !== 'undefined' && window.__APP_CONFIG__?.API_URL) ||
+  ((import.meta as any).env?.VITE_API_URL ?? DEFAULTS.API_URL);
 
 export const config = {
   API_URL,
 };
 
 export type AppConfig = typeof config;
-

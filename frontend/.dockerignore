@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.log
+.vscode
+.idea
+coverage
+*.test.ts
+*.spec.ts
+README.md
+qeco-3
