@@ -8,20 +8,18 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Build stage
 FROM base AS builder
 
-# copy package files and lockfile
 COPY package.json pnpm-lock.yaml ./
 COPY vite.config.* tsconfig.json qwik.env.d.ts ./
 
-# install dependencies (uses pnpm via corepack)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-# copy source and build
 COPY src ./src
 COPY public ./public
 COPY index.html ./
+COPY adapters ./adapters
+COPY server ./server
 
 RUN pnpm run build
 
