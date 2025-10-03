@@ -1,0 +1,31 @@
+services:
+  frontend:
+    container_name: prn-assignment-frontend
+    image: ghcr.io/tasuketesuvaroogu/prn-assignment-frontend:latest
+    expose:
+      - "5244"
+    networks:
+      - proxy
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${API_URL:-http://localhost:6124/api}
+    restart: unless-stopped
+  backend:
+    container_name: prn-assignment-backend
+    image: ghcr.io/tasuketesuvaroogu/prn-assignment-backend:latest
+    platform: linux/arm64
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:6124
+      - Mongo__ConnectionString=${MONGO_CONNECTION_STRING}
+      - Mongo__DatabaseName=${MONGO_DATABASE_NAME:-prn-assignment}
+    expose:
+      - "6124"
+    networks:
+      - proxy
+    restart: unless-stopped      
+
+networks:
+  proxy:
+     name: "nginx-pm"
+     external: true
