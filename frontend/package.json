@@ -38,6 +38,7 @@
     "@fastify/static": "^6.10.1",
     "fastify": "^4.17.0",
     "dotenv": "^16.3.2",
+    "undici": "*",
     "fastify-plugin": "^4.5.0"
   }
 }
