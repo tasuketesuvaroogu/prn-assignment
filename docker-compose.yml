@@ -8,7 +8,7 @@ services:
       - proxy
     environment:
       - NODE_ENV=production
-      - API_URL=${API_URL}
+      - API_URL=
     restart: unless-stopped
   backend:
     container_name: prn-assignment-backend

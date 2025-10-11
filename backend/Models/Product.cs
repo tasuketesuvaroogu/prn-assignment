@@ -25,6 +25,22 @@ public class Product
     [BsonElement("image")]
     public string? Image { get; set; }
 
+    [Required]
+    [BsonElement("category")]
+    public string Category { get; set; } = string.Empty;
+
+    [Required]
+    [BsonElement("sizes")]
+    public List<string> Sizes { get; set; } = new();
+
+    [Required]
+    [BsonElement("colors")]
+    public List<string> Colors { get; set; } = new();
+
+    [Required]
+    [BsonElement("stock")]
+    public int Stock { get; set; } = 0;
+
     [BsonElement("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
