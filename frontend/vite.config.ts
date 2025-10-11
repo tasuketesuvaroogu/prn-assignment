@@ -1,102 +1,69 @@
-/**
- * This is the base config for vite.
- * When building, the adapter config is used which loads this file and extends it.
- */
-import { defineConfig, loadEnv, type UserConfig } from "vite";
-import { qwikVite } from "@builder.io/qwik/optimizer";
-import { qwikCity } from "@builder.io/qwik-city/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
-import pkg from "./package.json";
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import path from 'path';
 
-type PkgDep = Record<string, string>;
-const { dependencies = {}, devDependencies = {} } = pkg as any as {
-  dependencies: PkgDep;
-  devDependencies: PkgDep;
-  [key: string]: unknown;
-};
-errorOnDuplicatesPkgDeps(devDependencies, dependencies);
-
-/**
- * Note that Vite normally starts from `index.html` but the qwikCity plugin makes start at `src/entry.ssr.tsx` instead.
- */
-export default defineConfig(({ command, mode }): UserConfig => {
-  // Load env files for the current mode (e.g., .env, .env.production)
-  const env = loadEnv(mode, process.cwd(), "");
-  const VITE_BASE = env.VITE_BASE || env.VITE_BASE_URL || "/";
-  const VITE_API_URL = env.VITE_API_URL || env.API_URL || "http://localhost:5244/api";
-
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  
   return {
-    base: VITE_BASE,
+    plugins: [react()],
     define: {
-      __API_URL__: JSON.stringify(VITE_API_URL),
+      'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || 'http://localhost:6124/api'),
     },
-    plugins: [qwikCity(), qwikVite(), tsconfigPaths({ root: "." })],
-    // This tells Vite which dependencies to pre-build in dev mode.
-    optimizeDeps: {
-      // Put problematic deps that break bundling here, mostly those with binaries.
-      // For example ['better-sqlite3'] if you use that in server functions.
-      exclude: [],
-    },
-
-    server: {
-      headers: {
-        // Don't cache the server response in dev mode
-        "Cache-Control": "public, max-age=0",
+    resolve: {
+      extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+      alias: {
+        'vaul@1.1.2': 'vaul',
+        'sonner@2.0.3': 'sonner',
+        'recharts@2.15.2': 'recharts',
+        'react-resizable-panels@2.1.7': 'react-resizable-panels',
+        'react-hook-form@7.55.0': 'react-hook-form',
+        'react-day-picker@8.10.1': 'react-day-picker',
+        'next-themes@0.4.6': 'next-themes',
+        'lucide-react@0.487.0': 'lucide-react',
+        'input-otp@1.4.2': 'input-otp',
+        'embla-carousel-react@8.6.0': 'embla-carousel-react',
+        'cmdk@1.1.1': 'cmdk',
+        'class-variance-authority@0.7.1': 'class-variance-authority',
+        '@radix-ui/react-tooltip@1.1.8': '@radix-ui/react-tooltip',
+        '@radix-ui/react-toggle@1.1.2': '@radix-ui/react-toggle',
+        '@radix-ui/react-toggle-group@1.1.2': '@radix-ui/react-toggle-group',
+        '@radix-ui/react-tabs@1.1.3': '@radix-ui/react-tabs',
+        '@radix-ui/react-switch@1.1.3': '@radix-ui/react-switch',
+        '@radix-ui/react-slot@1.1.2': '@radix-ui/react-slot',
+        '@radix-ui/react-slider@1.2.3': '@radix-ui/react-slider',
+        '@radix-ui/react-separator@1.1.2': '@radix-ui/react-separator',
+        '@radix-ui/react-select@2.1.6': '@radix-ui/react-select',
+        '@radix-ui/react-scroll-area@1.2.3': '@radix-ui/react-scroll-area',
+        '@radix-ui/react-radio-group@1.2.3': '@radix-ui/react-radio-group',
+        '@radix-ui/react-progress@1.1.2': '@radix-ui/react-progress',
+        '@radix-ui/react-popover@1.1.6': '@radix-ui/react-popover',
+        '@radix-ui/react-navigation-menu@1.2.5': '@radix-ui/react-navigation-menu',
+        '@radix-ui/react-menubar@1.1.6': '@radix-ui/react-menubar',
+        '@radix-ui/react-label@2.1.2': '@radix-ui/react-label',
+        '@radix-ui/react-hover-card@1.1.6': '@radix-ui/react-hover-card',
+        '@radix-ui/react-dropdown-menu@2.1.6': '@radix-ui/react-dropdown-menu',
+        '@radix-ui/react-dialog@1.1.6': '@radix-ui/react-dialog',
+        '@radix-ui/react-context-menu@2.2.6': '@radix-ui/react-context-menu',
+        '@radix-ui/react-collapsible@1.1.3': '@radix-ui/react-collapsible',
+        '@radix-ui/react-checkbox@1.1.4': '@radix-ui/react-checkbox',
+        '@radix-ui/react-avatar@1.1.3': '@radix-ui/react-avatar',
+        '@radix-ui/react-aspect-ratio@1.1.2': '@radix-ui/react-aspect-ratio',
+        '@radix-ui/react-alert-dialog@1.1.6': '@radix-ui/react-alert-dialog',
+        '@radix-ui/react-accordion@1.2.3': '@radix-ui/react-accordion',
+        '@': path.resolve(__dirname, './src'),
       },
-      host: env.VITE_HOST || "0.0.0.0",
-      port: Number(env.VITE_PORT || env.PORT || 5244),
+    },
+    build: {
+      target: 'esnext',
+      outDir: 'build',
+    },
+    server: {
+      port: 3000,
+      open: true,
     },
     preview: {
-      headers: {
-        // Do cache the server response in preview (non-adapter production build)
-        "Cache-Control": "public, max-age=600",
-      },
-      host: env.VITE_HOST || "0.0.0.0",
-      port: Number(env.VITE_PREVIEW_PORT || env.PORT || 5244),
+      port: 3000,
     },
   };
 });
-
-// *** utils ***
-
-/**
- * Function to identify duplicate dependencies and throw an error
- * @param {Object} devDependencies - List of development dependencies
- * @param {Object} dependencies - List of production dependencies
- */
-function errorOnDuplicatesPkgDeps(
-  devDependencies: PkgDep,
-  dependencies: PkgDep,
-) {
-  let msg = "";
-  // Create an array 'duplicateDeps' by filtering devDependencies.
-  // If a dependency also exists in dependencies, it is considered a duplicate.
-  const duplicateDeps = Object.keys(devDependencies).filter(
-    (dep) => dependencies[dep],
-  );
-
-  // include any known qwik packages
-  const qwikPkg = Object.keys(dependencies).filter((value) =>
-    /qwik/i.test(value),
-  );
-
-  // any errors for missing "qwik-city-plan"
-  // [PLUGIN_ERROR]: Invalid module "@qwik-city-plan" is not a valid package
-  msg = `Move qwik packages ${qwikPkg.join(", ")} to devDependencies`;
-
-  if (qwikPkg.length > 0) {
-    throw new Error(msg);
-  }
-
-  // Format the error message with the duplicates list.
-  // The `join` function is used to represent the elements of the 'duplicateDeps' array as a comma-separated string.
-  msg = `
-    Warning: The dependency "${duplicateDeps.join(", ")}" is listed in both "devDependencies" and "dependencies".
-    Please move the duplicated dependencies to "devDependencies" only and remove it from "dependencies"
-  `;
-
-  // Throw an error with the constructed message.
-  if (duplicateDeps.length > 0) {
-    throw new Error(msg);
-  }
-}

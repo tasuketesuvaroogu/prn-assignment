@@ -1,47 +1,38 @@
-FROM node:20-alpine AS base
-
-ENV CI="Docker"
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-
-RUN corepack enable
+# Build stage
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-FROM base AS builder
+# Copy package files
+COPY package.json pnpm-lock.yaml* ./
 
-COPY package.json pnpm-lock.yaml ./
-COPY vite.config.* tsconfig.json qwik.env.d.ts ./
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
-COPY src ./src
-COPY public ./public
-COPY index.html ./
-COPY adapters ./adapters
+# Copy source code
+COPY . .
 
-# Ensure no VITE_* variables are set during build (we use runtime config instead)
+# Build the app (env vars will be injected at runtime via config.js)
 ENV VITE_API_URL=""
-ENV API_URL=""
-
 RUN pnpm run build
 
-FROM base AS production
+# Production stage
+FROM nginx:alpine
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy built files to nginx
+COPY --from=builder /app/build /usr/share/nginx/html
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
+# Copy nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-COPY package.json pnpm-lock.yaml ./
+# Add entrypoint script for runtime config injection
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+EXPOSE 80
 
-ENV NODE_ENV=production
-
-ENV PORT=5244
-
-EXPOSE 5244
-
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
