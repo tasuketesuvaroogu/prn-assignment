@@ -8,14 +8,19 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const imageSrc = product.image || 'https://via.placeholder.com/400x400?text=Product';
+
   return (
     <Link to={`/products/${product.id}`}>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full">
         <div className="aspect-square overflow-hidden bg-gray-100">
           <img
-            src={product.image}
+            src={imageSrc}
             alt={product.name}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            onError={(event) => {
+              event.currentTarget.src = 'https://via.placeholder.com/400x400?text=Product';
+            }}
           />
         </div>
         <CardContent className="p-4">

@@ -14,39 +14,67 @@ public class ProductService
         _products = database.GetCollection<Product>(settings.ProductsCollectionName);
     }
 
-    public async Task<List<Product>> GetAllAsync(int page = 1, int pageSize = 10, string? search = null)
+    public async Task<List<Product>> GetAllAsync(
+        int page = 1,
+        int pageSize = 10,
+        string? search = null,
+        string? category = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null)
     {
-        var filter = Builders<Product>.Filter.Empty;
-        
-        if (!string.IsNullOrEmpty(search))
-        {
-            var searchFilter = Builders<Product>.Filter.Or(
-                Builders<Product>.Filter.Regex("name", new MongoDB.Bson.BsonRegularExpression(search, "i")),
-                Builders<Product>.Filter.Regex("description", new MongoDB.Bson.BsonRegularExpression(search, "i"))
-            );
-            filter = searchFilter;
-        }
+        var filters = BuildFilters(search, category, minPrice, maxPrice);
 
-        return await _products.Find(filter)
+        return await _products.Find(filters)
             .Skip((page - 1) * pageSize)
             .Limit(pageSize)
             .ToListAsync();
     }
 
-    public async Task<long> GetCountAsync(string? search = null)
+    public async Task<long> GetCountAsync(
+        string? search = null,
+        string? category = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null)
     {
-        var filter = Builders<Product>.Filter.Empty;
-        
+        var filters = BuildFilters(search, category, minPrice, maxPrice);
+
+        return await _products.CountDocumentsAsync(filters);
+    }
+
+    private FilterDefinition<Product> BuildFilters(string? search, string? category, decimal? minPrice, decimal? maxPrice)
+    {
+        var filterBuilder = Builders<Product>.Filter;
+        var filters = new List<FilterDefinition<Product>>();
+
         if (!string.IsNullOrEmpty(search))
         {
-            var searchFilter = Builders<Product>.Filter.Or(
-                Builders<Product>.Filter.Regex("name", new MongoDB.Bson.BsonRegularExpression(search, "i")),
-                Builders<Product>.Filter.Regex("description", new MongoDB.Bson.BsonRegularExpression(search, "i"))
-            );
-            filter = searchFilter;
+            var regex = new MongoDB.Bson.BsonRegularExpression(search, "i");
+            filters.Add(filterBuilder.Or(
+                filterBuilder.Regex(p => p.Name, regex),
+                filterBuilder.Regex(p => p.Description, regex)));
         }
 
-        return await _products.CountDocumentsAsync(filter);
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            filters.Add(filterBuilder.Eq(p => p.Category, category));
+        }
+
+        if (minPrice.HasValue)
+        {
+            filters.Add(filterBuilder.Gte(p => p.Price, minPrice.Value));
+        }
+
+        if (maxPrice.HasValue)
+        {
+            filters.Add(filterBuilder.Lte(p => p.Price, maxPrice.Value));
+        }
+
+        return filters.Count switch
+        {
+            0 => filterBuilder.Empty,
+            1 => filters[0],
+            _ => filterBuilder.And(filters)
+        };
     }
 
     public async Task<Product?> GetByIdAsync(string id)

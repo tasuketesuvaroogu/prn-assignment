@@ -1,219 +1,437 @@
-// API utility functions for backend communication
+// Centralised API utilities for interacting with the backend services
 
-// Backend API Product structure (matches updated backend schema)
 export interface ApiProduct {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image?: string;
-  category: string;
-  sizes: string[];
-  colors: string[];
-  stock: number;
+	id: string;
+	name: string;
+	description: string;
+	price: number;
+	image?: string;
+	category: string;
+	sizes: string[];
+	colors: string[];
+	stock: number;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
-// Extended Product interface for frontend use (includes createdAt for UI)
 export interface Product extends ApiProduct {
-  createdAt: string;
+	createdAt: string;
 }
 
 export interface ProductFormData {
-  name: string;
-  description: string;
-  price: number;
-  image?: string;
-  category: string;
-  sizes: string[];
-  colors: string[];
-  stock: number;
+	name: string;
+	description: string;
+	price: number;
+	image?: string;
+	category: string;
+	sizes: string[];
+	colors: string[];
+	stock: number;
 }
 
-// Extend Window interface for runtime config
+export interface AuthResponse {
+	token: string;
+	email: string;
+	userId: string;
+	role: string;
+	expiresAt: string;
+}
+
+export interface UserProfile {
+	userId: string;
+	email: string;
+	role: string;
+	createdAt: string;
+}
+
+export interface CartItem {
+	itemId: string;
+	productId: string;
+	name: string;
+	price: number;
+	quantity: number;
+	size?: string | null;
+	color?: string | null;
+	image?: string | null;
+	subtotal?: number;
+}
+
+export interface CartSummary {
+	items: CartItem[];
+	total: number;
+	updatedAt: string;
+}
+
+export interface OrderItem {
+	productId: string;
+	name: string;
+	price: number;
+	quantity: number;
+	size?: string | null;
+	color?: string | null;
+	image?: string | null;
+	subtotal?: number;
+}
+
+export interface Order {
+	id: string;
+	userId: string;
+	items: OrderItem[];
+	totalAmount: number;
+	status: 'pending' | 'paid' | 'cancelled';
+	createdAt: string;
+	updatedAt: string;
+	paymentReference?: string | null;
+	checkoutSessionId?: string | null;
+}
+
+export interface CheckoutResponse {
+	order: Order;
+	message: string;
+}
+
+export interface CheckoutSessionResponse {
+	checkoutUrl: string;
+	sessionId: string;
+	publishableKey?: string;
+}
+
+export interface ConfirmPaymentResponse {
+	order: Order;
+	message: string;
+}
+
+export interface ApiError {
+	message?: string;
+	errors?: Record<string, string[]>;
+}
+
 declare global {
-  interface Window {
-    __ENV__?: {
-      VITE_API_URL?: string;
-    };
-  }
+	interface Window {
+		__ENV__?: {
+			VITE_API_URL?: string;
+		};
+	}
 }
 
-// Get API URL from runtime config (injected by Docker) or build-time env
 function getApiUrl(): string {
-  // Try runtime config first (production Docker)
-  if (typeof window !== 'undefined' && window.__ENV__?.VITE_API_URL) {
-    return window.__ENV__.VITE_API_URL;
-  }
-  // Fallback to build-time env or localhost
-  return (import.meta as any).env?.VITE_API_URL || 'http://localhost:6124/api';
+	if (typeof window !== 'undefined' && window.__ENV__?.VITE_API_URL) {
+		return window.__ENV__.VITE_API_URL;
+	}
+	return (import.meta as any).env?.VITE_API_URL || 'http://localhost:6124/api';
 }
 
-// Base API URL - uses runtime config for production, build-time for dev
 const API_BASE_URL = getApiUrl();
+let authToken: string | null = null;
 
-// Helper to convert API product to extended Product with UI fields
+export function setAuthToken(token: string | null) {
+	authToken = token;
+}
+
+function buildUrl(path: string): string {
+	if (path.startsWith('http')) {
+		return path;
+	}
+	return `${API_BASE_URL}${path}`;
+}
+
+async function request<T>(
+	path: string,
+	options: RequestInit = {},
+	requiresAuth: boolean = false
+): Promise<T> {
+	const headers = new Headers(options.headers ?? {});
+	const method = (options.method ?? 'GET').toUpperCase();
+	const isFormData = options.body instanceof FormData;
+
+	if (requiresAuth) {
+		if (!authToken) {
+			throw new Error('Authentication required');
+		}
+		headers.set('Authorization', `Bearer ${authToken}`);
+	} else if (authToken && !headers.has('Authorization')) {
+		headers.set('Authorization', `Bearer ${authToken}`);
+	}
+
+	if (!isFormData && method !== 'GET' && method !== 'HEAD' && !headers.has('Content-Type')) {
+		headers.set('Content-Type', 'application/json');
+	}
+
+	const response = await fetch(buildUrl(path), {
+		...options,
+		headers,
+	});
+
+	if (!response.ok) {
+		let errorMessage = `Request failed with status ${response.status}`;
+		try {
+			const errorBody = await response.json();
+			if (errorBody?.message) {
+				errorMessage = errorBody.message;
+			}
+		} catch {
+			// ignore parse errors
+		}
+		throw new Error(errorMessage);
+	}
+
+	if (response.status === 204) {
+		return undefined as T;
+	}
+
+	const contentType = response.headers.get('content-type') ?? '';
+	if (contentType.includes('application/json')) {
+		return (await response.json()) as T;
+	}
+
+	const text = await response.text();
+	return text as unknown as T;
+}
+
 function enhanceProduct(apiProduct: ApiProduct): Product {
-  return {
-    ...apiProduct,
-    createdAt: new Date().toISOString(),
-  };
+	return {
+		...apiProduct,
+		createdAt: apiProduct.createdAt ?? new Date().toISOString(),
+	};
 }
 
-// Get all products with optional filters
+// Authentication ------------------------------------------------------------
+export async function registerUser(email: string, password: string, confirmPassword: string): Promise<AuthResponse> {
+	const body = JSON.stringify({ email, password, confirmPassword });
+	return request<AuthResponse>('/auth/register', {
+		method: 'POST',
+		body,
+	});
+}
+
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
+	const body = JSON.stringify({ email, password });
+	return request<AuthResponse>('/auth/login', {
+		method: 'POST',
+		body,
+	});
+}
+
+export async function getCurrentUser(): Promise<UserProfile> {
+	return request<UserProfile>('/auth/me', {}, true);
+}
+
+// Products -----------------------------------------------------------------
 export async function getProducts(
-  page: number = 1,
-  limit: number = 12,
-  search?: string,
-  category?: string,
-  minPrice?: number,
-  maxPrice?: number
-): Promise<{ products: Product[]; total: number }> {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString(),
-  });
+	page: number = 1,
+	limit: number = 12,
+	search?: string,
+	category?: string,
+	minPrice?: number,
+	maxPrice?: number
+): Promise<{ products: Product[]; total: number; totalPages: number; page: number }> {
+	const params = new URLSearchParams({
+		page: page.toString(),
+		pageSize: limit.toString(),
+	});
+	if (search) params.set('search', search);
+	if (category && category !== 'All') params.set('category', category);
+	if (minPrice !== undefined) params.set('minPrice', String(minPrice));
+	if (maxPrice !== undefined) params.set('maxPrice', String(maxPrice));
 
-  const response = await fetch(`${API_BASE_URL}/products?${params}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch products');
-  }
-  
-  const data = await response.json();
-  
-  // Handle different response formats
-  let apiProducts: ApiProduct[] = [];
-  if (Array.isArray(data)) {
-    apiProducts = data;
-  } else if (data.products && Array.isArray(data.products)) {
-    apiProducts = data.products;
-  } else if (data.data && Array.isArray(data.data)) {
-    apiProducts = data.data;
-  } else {
-    console.warn('Unexpected API response format:', data);
-    throw new Error('Invalid response format from API');
-  }
-  
-  // Convert API products to extended Product format
-  let products = apiProducts.map(enhanceProduct);
-  
-  // Apply client-side filters for fields not supported by API
-  if (search) {
-    const searchLower = search.toLowerCase();
-    products = products.filter(
-      (product) =>
-        product.name.toLowerCase().includes(searchLower) ||
-        product.description.toLowerCase().includes(searchLower)
-    );
-  }
-  
-  if (category && category !== 'All') {
-    products = products.filter((product) => product.category === category);
-  }
-  
-  if (minPrice !== undefined) {
-    products = products.filter((product) => product.price >= minPrice);
-  }
-  
-  if (maxPrice !== undefined) {
-    products = products.filter((product) => product.price <= maxPrice);
-  }
-  
-  return {
-    products,
-    total: products.length,
-  };
+	const data = await request<{ products: ApiProduct[]; pagination?: { total: number; totalPages: number; page: number } }>(
+		`/products?${params.toString()}`
+	);
+
+	const products = (data.products ?? []).map(enhanceProduct);
+	const total = data.pagination?.total ?? products.length;
+	const totalPages = data.pagination?.totalPages ?? Math.ceil(total / limit);
+	const currentPage = data.pagination?.page ?? page;
+
+	return { products, total, totalPages, page: currentPage };
 }
 
-// Get single product by ID
 export async function getProductById(id: string): Promise<Product> {
-  const response = await fetch(`${API_BASE_URL}/products/${id}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch product');
-  }
-  const apiProduct: ApiProduct = await response.json();
-  return enhanceProduct(apiProduct);
+	const product = await request<ApiProduct>(`/products/${id}`);
+	return enhanceProduct(product);
 }
 
-// Create new product
 export async function createProduct(data: ProductFormData): Promise<Product> {
-  const response = await fetch(`${API_BASE_URL}/products`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      image: data.image || '',
-      category: data.category,
-      sizes: data.sizes,
-      colors: data.colors,
-      stock: data.stock,
-    }),
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to create product');
-  }
-  
-  const apiProduct: ApiProduct = await response.json();
-  return enhanceProduct(apiProduct);
+	const body = JSON.stringify(data);
+	const product = await request<ApiProduct>(
+		'/products',
+		{
+			method: 'POST',
+			body,
+		},
+		true
+	);
+	return enhanceProduct(product);
 }
 
-// Update existing product
 export async function updateProduct(id: string, data: ProductFormData): Promise<Product> {
-  const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      image: data.image || '',
-      category: data.category,
-      sizes: data.sizes,
-      colors: data.colors,
-      stock: data.stock,
-    }),
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to update product');
-  }
-  
-  const apiProduct: ApiProduct = await response.json();
-  return enhanceProduct(apiProduct);
+	const body = JSON.stringify(data);
+	const product = await request<ApiProduct>(
+		`/products/${id}`,
+		{
+			method: 'PUT',
+			body,
+		},
+		true
+	);
+	return enhanceProduct(product);
 }
 
-// Delete product
 export async function deleteProduct(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-    method: 'DELETE',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to delete product');
-  }
+	await request<void>(
+		`/products/${id}`,
+		{
+			method: 'DELETE',
+		},
+		true
+	);
 }
 
-// Upload image to backend
-export async function uploadImage(file: File): Promise<{ path: string }> {
-  const formData = new FormData();
-  formData.append('file', file);
+export async function uploadImage(file: File): Promise<{ url: string }> {
+	const formData = new FormData();
+	formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to upload image');
-  }
-  
-  return response.json();
+	return request<{ url: string }>(
+		'/upload',
+		{
+			method: 'POST',
+			body: formData,
+		},
+		true
+	);
 }
 
+// Cart ---------------------------------------------------------------------
+export async function getCart(): Promise<CartSummary> {
+	return request<CartSummary>('/cart', {}, true);
+}
+
+export async function addItemToCart(payload: {
+	productId: string;
+	quantity?: number;
+	size?: string;
+	color?: string;
+}): Promise<CartSummary> {
+	const body = JSON.stringify({
+		productId: payload.productId,
+		quantity: payload.quantity ?? 1,
+		size: payload.size,
+		color: payload.color,
+	});
+
+	const response = await request<{ items: CartItem[]; total: number }>(
+		'/cart/items',
+		{
+			method: 'POST',
+			body,
+		},
+		true
+	);
+
+	return {
+		items: response.items,
+		total: response.total,
+		updatedAt: new Date().toISOString(),
+	};
+}
+
+export async function updateCartItem(itemId: string, quantity: number): Promise<CartSummary> {
+	const body = JSON.stringify({ itemId, quantity });
+	const response = await request<{ items: CartItem[]; total: number }>(
+		'/cart/items',
+		{
+			method: 'PUT',
+			body,
+		},
+		true
+	);
+
+	return {
+		items: response.items,
+		total: response.total,
+		updatedAt: new Date().toISOString(),
+	};
+}
+
+export async function removeCartItem(itemId: string): Promise<CartSummary> {
+	const response = await request<{ items: CartItem[]; total: number }>(
+		`/cart/items/${itemId}`,
+		{
+			method: 'DELETE',
+		},
+		true
+	);
+
+	return {
+		items: response.items,
+		total: response.total,
+		updatedAt: new Date().toISOString(),
+	};
+}
+
+export async function clearCart(): Promise<void> {
+	await request<void>(
+		'/cart',
+		{
+			method: 'DELETE',
+		},
+		true
+	);
+}
+
+// Orders -------------------------------------------------------------------
+export async function checkoutOrder(requestBody: { shippingAddress?: string; notes?: string }): Promise<CheckoutResponse> {
+	const body = JSON.stringify(requestBody ?? {});
+	return request<CheckoutResponse>(
+		'/orders/checkout',
+		{
+			method: 'POST',
+			body,
+		},
+		true
+	);
+}
+
+export async function getOrders(): Promise<Order[]> {
+	return request<Order[]>('/orders', {}, true);
+}
+
+export async function getOrderById(orderId: string): Promise<Order> {
+	return request<Order>(`/orders/${orderId}`, {}, true);
+}
+
+export async function confirmOrderPayment(orderId: string, paymentReference?: string): Promise<ConfirmPaymentResponse> {
+	const body = JSON.stringify({ paymentReference });
+	return request<ConfirmPaymentResponse>(
+		`/orders/${orderId}/confirm`,
+		{
+			method: 'POST',
+			body,
+		},
+		true
+	);
+}
+
+export async function cancelOrder(orderId: string): Promise<ConfirmPaymentResponse> {
+	return request<ConfirmPaymentResponse>(
+		`/orders/${orderId}/cancel`,
+		{
+			method: 'POST',
+		},
+		true
+	);
+}
+
+// Payments -----------------------------------------------------------------
+export async function createCheckoutSession(orderId: string, successUrl?: string, cancelUrl?: string): Promise<CheckoutSessionResponse> {
+	const body = JSON.stringify({ orderId, successUrl, cancelUrl });
+	return request<CheckoutSessionResponse>(
+		'/payments/stripe/checkout-session',
+		{
+			method: 'POST',
+			body,
+		},
+		true
+	);
+}
 

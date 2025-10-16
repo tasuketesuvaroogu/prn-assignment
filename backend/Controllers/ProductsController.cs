@@ -1,5 +1,6 @@
 using ECommerce.Api.Models;
 using ECommerce.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerce.Api.Controllers;
@@ -21,12 +22,15 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<object>> GetProducts(
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 10,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] string? category = null,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null)
     {
         try
         {
-            var products = await _productService.GetAllAsync(page, pageSize, search);
-            var total = await _productService.GetCountAsync(search);
+            var products = await _productService.GetAllAsync(page, pageSize, search, category, minPrice, maxPrice);
+            var total = await _productService.GetCountAsync(search, category, minPrice, maxPrice);
             
             return Ok(new
             {
@@ -68,6 +72,7 @@ public class ProductsController : ControllerBase
         }
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product)
     {
@@ -88,6 +93,7 @@ public class ProductsController : ControllerBase
         }
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateProduct(string id, [FromBody] Product product)
     {
@@ -123,6 +129,7 @@ public class ProductsController : ControllerBase
         }
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteProduct(string id)
     {

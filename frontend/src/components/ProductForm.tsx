@@ -102,8 +102,12 @@ export function ProductForm() {
     try {
       // Call your backend API to upload the image
       const response = await uploadImage(imageFile);
-      const imageUrl = response.path; // API returns { path: string }
-      setFormData({ ...formData, image: imageUrl });
+      const imageUrl = response.url || (response as unknown as { path?: string }).path || '';
+      if (!imageUrl) {
+        throw new Error('Upload did not return an image URL');
+      }
+      setFormData((prev) => ({ ...prev, image: imageUrl }));
+      setImagePreview(imageUrl);
       toast.success('Image uploaded successfully');
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -149,8 +153,8 @@ export function ProductForm() {
       toast.error('Please select at least one color');
       return;
     }
-    if (!imagePreview) {
-      toast.error('Please upload a product image');
+    if (!formData.image && !imagePreview) {
+      toast.error('Please provide a product image');
       return;
     }
 
@@ -260,7 +264,7 @@ export function ProductForm() {
               {/* Category */}
               <div>
                 <Label htmlFor="category">Category *</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <Select value={formData.category} onValueChange={(value: string) => setFormData({ ...formData, category: value })}>
                   <SelectTrigger id="category">
                     <SelectValue />
                   </SelectTrigger>

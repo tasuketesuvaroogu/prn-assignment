@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerce.Api.Controllers;
@@ -15,6 +16,7 @@ public class UploadController : ControllerBase
         _configuration = configuration;
     }
 
+    [Authorize]
     [HttpPost]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<object>> Upload([FromForm(Name = "file")] IFormFile? file)
