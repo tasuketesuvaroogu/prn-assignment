@@ -1,5 +1,4 @@
 node_modules
-build
 dist
 .git
 .gitignore
@@ -16,3 +15,6 @@ coverage
 *.spec.tsx
 README.md
 .DS_Store
+# Note: build directory is needed for Dockerfile.prebuilt
+# Uncomment the line below if using the multi-stage Dockerfile instead:
+# build
