@@ -64,6 +64,17 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore ./backend/ECommerce.Api.csproj
+
+    - name: Publish for Linux x64
+      run: dotnet publish ./backend/ECommerce.Api.csproj -c Release -r linux-x64 --self-contained false -o ./backend/publish
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
@@ -89,10 +100,10 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./backend
-        file: ./backend/Dockerfile
+        file: ./backend/Dockerfile.prebuilt
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
